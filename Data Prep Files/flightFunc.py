@@ -25,7 +25,8 @@ def txt_to_csv(filename, scaler, output_name):
                               'crs_elapsed_time', 'distance']]
     
     # Convert the time column into hours
-    dfNumeric.loc[:, 'crs_arr_time'] = dfRead.loc[:, 'crs_arr_time'] / 100
+    dfNumeric.loc[:, 'crs_dep_time'] = dfRead.loc[:, 'crs_dep_time'] // 100
+    dfNumeric.loc[:, 'crs_arr_time'] = dfRead.loc[:, 'crs_arr_time'] // 100
     
     # Scale the numerical data either with StandardScaler() or
     # MinMaxScaler() from parameter passed in function
@@ -72,7 +73,7 @@ def txt_to_csv(filename, scaler, output_name):
     # Preserve the sign of the target variable (+ for delay, and - for
     # early arrival), then scale the values
     y_sign = ((dfRead['arr_delay'] > 0) * 1)
-    y = StandardScaler().fit_transform(dfRead['arr_delay'].
+    y = scaler.fit_transform(dfRead['arr_delay'].
                                        values.reshape(-1, 1))
     
     # Use one-hot encoding to create dummy variables for categorical
@@ -85,5 +86,60 @@ def txt_to_csv(filename, scaler, output_name):
 
     # Write the feature columns and target columns to "X" and "y" .csv files
     # (parameter "output_name" is appended)
-    FinalDF.iloc[:,:-2].to_csv('X_' + output_name + '.csv', index = False)
-    FinalDF.iloc[:,-2:].to_csv('y_' + output_name + '.csv', index = False)
+    FinalDF.iloc[:,:-2].to_csv('X_' + output_name + '.csv', index = False, compression = 'gzip')
+    FinalDF.iloc[:,-2:].to_csv('y_' + output_name + '.csv', index = False, compression = 'gzip')
+    
+def replaceCarrierMonthWithAvgDelay(df):
+    carrierDict={
+        '9E': 3.788253768330484,
+        '9K': -1.4138972809667674,
+        'AA': 6.209127910387774,
+        'AS': 0.4580709294158264,
+        'AX': 15.614108372836077,
+        'B6': 11.328905876893792,
+        'C5': 23.297226405497323,
+        'CP': 5.752920400632577,
+        'DL': 0.4649172663471822,
+        'EM': 6.439237738206811,
+        'EV': 11.460218091834946,
+        'F9': 11.294148868243784,
+        'G4': 8.948751471435369,
+        'G7': 8.645223084384094,
+        'HA': 0.7479588660633051,
+        'KS': 17.362094951017333,
+        'MQ': 6.192537786526977,
+        'NK': 5.135043464348568,
+        'OH': 7.457289195029419,
+        'OO': 7.155529056303303,
+        'PT': 4.442924183761644,
+        'QX': 2.056287279578388,
+        'UA': 7.0310394918378565,
+        'VX': 1.7279776132454965,
+        'WN': 3.549975537488939,
+        'YV': 9.682003383338802,
+        'YX': 3.946617621243796,
+        'ZW': 7.347722443129507
+    }
+    
+    df['carrierAvgDelay']=df['op_unique_carrier'].apply(lambda x: carrierDict[x])
+    df.drop(columns='op_unique_carrier', inplace=True)
+    
+    monthDict={
+        1: 3.9587876597858975,
+        2: 6.745095564322296,
+        3: 2.818772851018936,
+        4: 4.159130781653622,
+        5: 6.511144454809372,
+        6: 10.414443676520804,
+        7: 8.977515143605581,
+        8: 8.898890118485891,
+        9: 1.70845239337149,
+        10: 2.8535847853724894,
+        11: 2.9936067372926765,
+        12: 5.110635893078993
+    }
+    
+    df['MonthAvgDelay']=X['month'].apply(lambda x: monthDict[x])
+    df.drop(columns='month', inplace=True)
+    
+    return df
