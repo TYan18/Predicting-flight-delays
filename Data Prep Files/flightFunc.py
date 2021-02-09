@@ -121,7 +121,7 @@ def replaceCarrierMonthWithAvgDelay(df):
         'ZW': 7.347722443129507
     }
     
-    df['carrierAvgDelay']=df['op_unique_carrier'].apply(lambda x: carrierDict[x])
+    df['carrierAvgDelay']=df['op_unique_carrier'].apply(lambda y: carrierDict[y])
     df.drop(columns='op_unique_carrier', inplace=True)
     
     monthDict={
@@ -139,7 +139,24 @@ def replaceCarrierMonthWithAvgDelay(df):
         12: 5.110635893078993
     }
     
-    df['MonthAvgDelay']=X['month'].apply(lambda x: monthDict[x])
+    df['MonthAvgDelay']=df['month'].apply(lambda y: monthDict[y])
     df.drop(columns='month', inplace=True)
+    
+    return df
+
+def replace_origin_dest(df):
+    # df: X features dataframe without one-hot encoding
+
+    # Find the average delay times by origin location, and store the values in a dictionary
+    origin = pd.read_csv('origin_arr_delay.txt', delimiter = '\t', names = ['origin', 'avg_delay'])
+    origin = pd.Series(origin.avg_delay.values, index = origin.origin).to_dict()
+    
+    # Find the average delay times by destination location, and store the values in a dictionary
+    dest = pd.read_csv('dest_arr_delay.txt', delimiter = '\t', names = ['dest', 'avg_delay'])
+    dest = pd.Series(dest.avg_delay.values, index = dest.dest).to_dict()
+    
+    # Replace the values in the "origin" and "dest" columns with the average arrival delay time
+    df['origin'] = df['origin'].replace(origin)
+    df['dest'] = df['dest'].replace(dest)
     
     return df
