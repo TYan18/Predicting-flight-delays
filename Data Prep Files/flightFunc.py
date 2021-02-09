@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-def txt_to_csv(filename, scaler, output_name):
+def txt_to_csv_v2(filename, scaler, output_name, make_dum=True):
     # filename (str): the name of the .txt file, including "".txt"
     # extension and local folder path
     
@@ -67,7 +67,7 @@ def txt_to_csv(filename, scaler, output_name):
                            'origin_airport_id', 'origin_city_name',
                            'dest_airport_id', 'dest_city_name', 'dup',
                             'tail_num', 'op_carrier_fl_num', 'arr_delay',
-                            'op_carrier_fl_num'],
+                            'op_carrier_fl_num','cancellation_code'],
                           inplace = True, errors = 'ignore')
     
     # Preserve the sign of the target variable (+ for delay, and - for
@@ -79,7 +79,10 @@ def txt_to_csv(filename, scaler, output_name):
     # Use one-hot encoding to create dummy variables for categorical
     # features, designate the correct columns for the target values as well
     # as preserved sign, and drop all rows with NaN values
-    FinalDF = pd.get_dummies(dfConcat)
+    if make_dum:
+        FinalDF = pd.get_dummies(dfConcat)
+    else:
+        FinalDF = dfConcat
     FinalDF['yFT'] = y
     FinalDF['y_sign'] = y_sign
     FinalDF.dropna(inplace = True)
