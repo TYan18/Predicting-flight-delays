@@ -1,24 +1,26 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, PowerTransformer
 
-def txt_to_csv_v2(filename, scaler, output_name, make_dum=True):
+def txt_to_df(filename, scaler, make_dum = False, to_csv = False, output_name = None):
     # filename (str): the name of the .txt file, including "".txt"
     # extension and local folder path
     
-    # scaler (method): either StandardScaler() or MinMaxScaler() from
-    # sklearn.processing
+    # scaler (method): either StandardScaler(), MinMaxScaler(), RobustScaler(),
+    # or PowerTransformer() from sklearn.preprocessing; the first two methods
+    # are more sensitive to outliers
+    
+    # make_dum (bool): default False; if True, then dummy variables will be created
+    # for object-type variables via one-hot encoding
+    
+    # to_csv (bool): default False; if True, then final dataframe will be written
+    # to a .csv file
     
     # output_name (str): the name to append to "x_<output_name>.csv" and
-    # "y_<output_name>.csv"
+    # "y_<output_name>.csv", only required if write = True
     
     # Import the .txt file (parameter) as a Pandas df
     dfRead = pd.read_csv(filename, delimiter = '\t')
-    
-    # Drop rows where target value is an outlier (arrival more than
-    # 42.5 minutes late or more than 49.5 minutes early)
-    dfRead = dfRead.loc[(dfRead['arr_delay'] <= 42.5) &
-                        (dfRead['arr_delay'] >= -49.5)]
     
     # Separate the numerical feature columns for scaling
     dfNumeric = dfRead[['crs_dep_time', 'crs_arr_time',
@@ -70,12 +72,6 @@ def txt_to_csv_v2(filename, scaler, output_name, make_dum=True):
                             'op_carrier_fl_num','cancellation_code'],
                           inplace = True, errors = 'ignore')
     
-    # Preserve the sign of the target variable (+ for delay, and - for
-    # early arrival), then scale the values
-    y_sign = ((dfRead['arr_delay'] > 0) * 1)
-    y = scaler.fit_transform(dfRead['arr_delay'].
-                                       values.reshape(-1, 1))
-    
     # Use one-hot encoding to create dummy variables for categorical
     # features, designate the correct columns for the target values as well
     # as preserved sign, and drop all rows with NaN values
@@ -83,17 +79,24 @@ def txt_to_csv_v2(filename, scaler, output_name, make_dum=True):
         FinalDF = pd.get_dummies(dfConcat)
     else:
         FinalDF = dfConcat
-    FinalDF['yFT'] = y
-    FinalDF['y_sign'] = y_sign
+    FinalDF['arr_delay'] = dfRead['arr_delay']
     FinalDF.dropna(inplace = True)
+    X = FinalDF.drop('arr_delay', axis = 1)
+    y = FinalDF['arr_delay']
 
     # Write the feature columns and target columns to "X" and "y" .csv files
     # (parameter "output_name" is appended)
-    FinalDF.iloc[:,:-2].to_csv('X_' + output_name + '.csv', index = False, compression = 'gzip')
-    FinalDF.iloc[:,-2:].to_csv('y_' + output_name + '.csv', index = False, compression = 'gzip')
+    if to_csv:
+        X.to_csv('X_' + output_name + '.csv', index = False, compression = 'gzip')
+        y.to_csv('y_' + output_name + '.csv', index = False, compression = 'gzip')
+    else:
+        return X, y
     
-def replaceCarrierMonthWithAvgDelay(df):
-    carrierDict={
+def replaceObjectsWithNums(X, scaler):
+    
+    # Average arrival delay time grouped by carrier, as a dictionary:
+    
+    carrierDict = {
         '9E': 3.788253768330484,
         '9K': -1.4138972809667674,
         'AA': 6.209127910387774,
@@ -124,10 +127,13 @@ def replaceCarrierMonthWithAvgDelay(df):
         'ZW': 7.347722443129507
     }
     
-    df['carrierAvgDelay']=df['op_unique_carrier'].apply(lambda y: carrierDict[y])
-    df.drop(columns='op_unique_carrier', inplace=True)
+    # Replace carrier IDs with average arrival delay
     
-    monthDict={
+    X['op_unique_carrier'] = X['op_unique_carrier'].replace(carrierDict)
+    
+    # Average arrival delay time grouped by month, as a dictionary:
+    
+    monthDict = {
         1: 3.9587876597858975,
         2: 6.745095564322296,
         3: 2.818772851018936,
@@ -142,24 +148,29 @@ def replaceCarrierMonthWithAvgDelay(df):
         12: 5.110635893078993
     }
     
-    df['MonthAvgDelay']=df['month'].apply(lambda y: monthDict[y])
-    df.drop(columns='month', inplace=True)
+    # Replace carrier IDs with average arrival delay
     
-    return df
-
-def replace_origin_dest(df):
-    # df: X features dataframe without one-hot encoding
-
-    # Find the average delay times by origin location, and store the values in a dictionary
-    origin = pd.read_csv('origin_arr_delay.txt', delimiter = '\t', names = ['origin', 'avg_delay'])
+    X['month'] = X['month'].apply(lambda x: monthDict[x])
+    
+    # Find the average delay times by origin location, and store the values in
+    # dictionary
+    origin = pd.read_csv('origin_arr_delay.txt', delimiter = '\t', names =
+                         ['origin', 'avg_delay'])
     origin = pd.Series(origin.avg_delay.values, index = origin.origin).to_dict()
     
-    # Find the average delay times by destination location, and store the values in a dictionary
-    dest = pd.read_csv('dest_arr_delay.txt', delimiter = '\t', names = ['dest', 'avg_delay'])
+    # Find the average delay times by destination location, and store the values in
+    # a dictionary
+    dest = pd.read_csv('dest_arr_delay.txt', delimiter = '\t', names = ['dest',
+                        'avg_delay'])
     dest = pd.Series(dest.avg_delay.values, index = dest.dest).to_dict()
     
-    # Replace the values in the "origin" and "dest" columns with the average arrival delay time
-    df['origin'] = df['origin'].replace(origin)
-    df['dest'] = df['dest'].replace(dest)
+    # Replace the values in the "origin" and "dest" columns with the average arrival
+    # delay time
+    X['origin'] = X['origin'].replace(origin)
+    X['dest'] = X['dest'].replace(dest)
     
-    return df
+    # Scale the numerical columns with one of the four scalers indicated above
+    col_list = ['op_unique_carrier', 'month', 'origin', 'dest']
+    X[col_list] = scaler.fit_transform(X[col_list])
+    
+    return X
