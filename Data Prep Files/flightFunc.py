@@ -10,7 +10,7 @@ def txt_to_df(filename, scaler, make_dum = False, to_csv = False, output_name = 
     # or PowerTransformer() from sklearn.preprocessing; the first two methods
     # are more sensitive to outliers
     
-    # make_dum (bool): default False; if True, then dummy variables will be created
+    # make-dum (bool): default False; if True, then dummy variables will be created
     # for object-type variables via one-hot encoding
     
     # to_csv (bool): default False; if True, then final dataframe will be written
@@ -51,11 +51,8 @@ def txt_to_df(filename, scaler, make_dum = False, to_csv = False, output_name = 
     # Select all of the object-type columns for one-hot encoding
     dfObjects = df.select_dtypes(include = 'object')
     
-    # Convert the flight date column to a datetime format, extract the
-    # month, and then delete this column
-    dfObjects['month'] = pd.DatetimeIndex(pd.to_datetime(df['fl_date'],
-                        infer_datetime_format = True)).month
-    dfObjects = dfObjects.drop('fl_date', axis = 1, errors = 'ignore')
+    # Convert the flight date column to a datetime format
+    dfObjects['fl_date'] = pd.to_datetime(dfObjects['fl_date'])
     
     # Concatenate the object-type columns with features dataframe
     dfNumeric_scaled = dfNumeric_scaled.reset_index(drop = True)
@@ -131,27 +128,6 @@ def replaceObjectsWithNums(X, scaler):
     
     X['op_unique_carrier'] = X['op_unique_carrier'].replace(carrierDict)
     
-    # Average arrival delay time grouped by month, as a dictionary:
-    
-    monthDict = {
-        1: 3.9587876597858975,
-        2: 6.745095564322296,
-        3: 2.818772851018936,
-        4: 4.159130781653622,
-        5: 6.511144454809372,
-        6: 10.414443676520804,
-        7: 8.977515143605581,
-        8: 8.898890118485891,
-        9: 1.70845239337149,
-        10: 2.8535847853724894,
-        11: 2.9936067372926765,
-        12: 5.110635893078993
-    }
-    
-    # Replace carrier IDs with average arrival delay
-    
-    X['month'] = X['month'].apply(lambda x: monthDict[x])
-    
     # Find the average delay times by origin location, and store the values in
     # dictionary
     origin = pd.read_csv('origin_arr_delay.txt', delimiter = '\t', names =
@@ -170,7 +146,7 @@ def replaceObjectsWithNums(X, scaler):
     X['dest'] = X['dest'].replace(dest)
     
     # Scale the numerical columns with one of the four scalers indicated above
-    col_list = ['op_unique_carrier', 'month', 'origin', 'dest']
+    col_list = ['op_unique_carrier', 'origin', 'dest']
     X[col_list] = scaler.fit_transform(X[col_list])
     
     return X
