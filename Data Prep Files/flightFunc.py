@@ -3,21 +3,23 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, PowerTransformer
 
 def txt_to_df(filename, scaler, make_dum = False, to_csv = False, output_name = None):
-    # filename (str): the name of the .txt file, including "".txt"
-    # extension and local folder path
+    '''
+    filename (str): the name of the .txt file, including "".txt"
+    extension and local folder path
     
-    # scaler (method): either StandardScaler(), MinMaxScaler(), RobustScaler(),
-    # or PowerTransformer() from sklearn.preprocessing; the first two methods
-    # are more sensitive to outliers
+    scaler (method): either StandardScaler(), MinMaxScaler(), RobustScaler(),
+    or PowerTransformer() from sklearn.preprocessing; the first two methods
+    are more sensitive to outliers
     
-    # make-dum (bool): default False; if True, then dummy variables will be created
-    # for object-type variables via one-hot encoding
+    make-dum (bool): default False; if True, then dummy variables will be created
+    for object-type variables via one-hot encoding
     
-    # to_csv (bool): default False; if True, then final dataframe will be written
-    # to a .csv file
+    to_csv (bool): default False; if True, then final dataframe will be written
+    to a .csv file
     
-    # output_name (str): the name to append to "x_<output_name>.csv" and
-    # "y_<output_name>.csv", only required if write = True
+    output_name (str): the name to append to "x_<output_name>.csv" and
+    "y_<output_name>.csv", only required if write = True
+    '''
     
     # Import the .txt file (parameter) as a Pandas df
     dfRead = pd.read_csv(filename, delimiter = '\t')
@@ -90,6 +92,10 @@ def txt_to_df(filename, scaler, make_dum = False, to_csv = False, output_name = 
         return X, y
     
 def replaceObjectsWithNums(X, scaler):
+    '''
+    Replaces in X, columns carrier, origin, dest with numerical continuous values for faster modeling
+    Takes in X, a Dataframe with op_unique_carrier, origin, and dest columns, and a scaler method
+    '''
     
     # Average arrival delay time grouped by carrier, as a dictionary:
     
@@ -150,3 +156,24 @@ def replaceObjectsWithNums(X, scaler):
     X[col_list] = scaler.fit_transform(X[col_list])
     
     return X
+
+def addXGBClsfPred(X,y_cat, pred_only=True):
+    '''
+    Adds to X, a new column predicting categorical value of y when given y_cat
+    
+    Take in X, a numerical only DataFrame, and y_cat, an arbitrary classification of y
+    
+    Option to get prediction only, or appended to X with pred_only
+    '''
+    
+    from xgboost import XGBClassifier
+    xgboost = XGBClassifier(n_estimators=100,learning_rate=0.1,reg_alpha=8)
+    xgboost.fit(X, y_cat)
+    y= xgboost.predict(X)
+    if pred_only:
+        return y
+    else:
+        X['xgbPred']=y
+        return X
+
+    
