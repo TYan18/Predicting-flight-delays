@@ -93,7 +93,8 @@ def txt_to_df(filename, scaler, make_dum = False, to_csv = False, output_name = 
     
 def replaceObjectsWithNums(X, scaler):
     '''
-    Replaces in X, columns carrier, origin, dest with numerical continuous values for faster modeling
+    Replaces in X, columns [carrier, origin, dest] with numerical continuous values for faster modeling
+    An alternative to making dummies
     Takes in X, a Dataframe with op_unique_carrier, origin, and dest columns, and a scaler method
     '''
     
@@ -176,4 +177,14 @@ def addXGBClsfPred(X,y_cat, pred_only=True):
         X['xgbPred']=y
         return X
 
-    
+def replace_fl_date_with_num(X):
+    '''
+    Replaces fl_date column, a pandas datetime, with columns month and day of the week, integers
+    Drops fl_date
+    '''
+    X['month'] = pd.DatetimeIndex(pd.to_datetime(X['fl_date'],
+                        infer_datetime_format = True)).month
+    X['dayWeek'] = pd.DatetimeIndex(pd.to_datetime(X['fl_date'],
+                        infer_datetime_format = True)).dayofweek
+    X.drop(columns='fl_date', inplace=True)
+    return X
