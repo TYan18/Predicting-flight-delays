@@ -1,5 +1,7 @@
 
-# Lighthouse Labs midterm project
+# Predicting flight delays
+
+In this project, we are predicting the amount of time that USA commercial flights will be delayed, one week in advance. The data was extracted from PostgreSQL, and machine learning methods were applied, using both regression and classification models. The steps taken in the project are outlined below. All relevant files can be found in this repo.
 
 ## Outline of steps:
 
@@ -54,4 +56,4 @@
 11. Perform predictions on flights test data
     - Use selected model with optimized parameters via grid search
 
-12. Transfer code blocks to .py files and submit final CSV file
+12. Transfer code blocks to .py files and generate final CSV file
